@@ -60,6 +60,38 @@ object Cats {
       b <- containerB
     } yield (a, b)
 
+  // Monad - applicative + flatMap
+  trait MyMonad[F[_]] extends Applicative[F] with FlatMap[F] {
+    override def map[A, B](fa: F[A])(f: A => B): F[B] = flatMap(fa)(a => pure(f(a)))
+  }
+
+  import cats.Monad
+  val monadList: Monad[List] = Monad[List]
+  def crossProduct_V3[F[_]: Monad, A, B](containerA: F[A], containerB: F[B]): F[(A, B)] =
+    for {
+      a <- containerA
+      b <- containerB
+    } yield (a, b)
+
+  // applicative-error - computations that can fail
+  trait MyApplicativeError[F[_], E] extends MyApplicative[F] {
+    def raiseError[A](e: E): F[A]
+  }
+
+  import cats.ApplicativeError
+  type ErrorOr[A] = Either[String, A]
+  val applicativeEither: ApplicativeError[ErrorOr, String] = ApplicativeError[ErrorOr, String]
+  val desiredValue: ErrorOr[Int]                           = applicativeEither.pure(42)
+  val failedValue: ErrorOr[Int] = applicativeEither.raiseError("Something went wrong")
+
+  import cats.syntax.applicativeError.* // import the extension methods
+  val failedValue_V2: ErrorOr[Int] = "Something went wrong".raiseError[ErrorOr, Int]
+
+  // monad-error - applicative-error + flatMap
+  trait MyMonadError[F[_], E] extends ApplicativeError[F, E] with Monad[F]
+  import cats.MonadError
+  val monadErrorEither: MonadError[ErrorOr, String] = MonadError[ErrorOr, String]
+
   def main(args: Array[String]): Unit = {}
 
 }
