@@ -1,8 +1,23 @@
 package com.rockthejvm.foundations
 
-import cats.effect.{IO, IOApp, Resource}
+import cats.{Defer, MonadError}
+import cats.effect.{
+  Concurrent,
+  Deferred,
+  Fiber,
+  GenSpawn,
+  IO,
+  IOApp,
+  MonadCancel,
+  Ref,
+  Resource,
+  Spawn,
+  Sync,
+  Temporal
+}
 
 import java.io.{File, FileWriter, PrintWriter}
+import scala.concurrent.ExecutionContext
 import scala.io.StdIn
 import scala.concurrent.duration.*
 import scala.util.Random
@@ -95,6 +110,56 @@ object CatsEffect extends IOApp.Simple {
 
   val copyFileEffect = compositeResource.use { case (source, destination) =>
     IO(source.getLines().foreach(destination.println))
+  }
+
+  // abstract kind s of computations
+  trait MyMonadCancel[F[_], E] extends MonadError[F, E] {
+    trait CancellationFlagResetter {
+      def apply[A](fa: F[A]): F[A] // with the cancellation flag reset
+    }
+
+    def canceled: F[Unit]
+    def uncancelable[A](poll: CancellationFlagResetter => F[A]): F[A]
+  }
+
+  // monadCancel for IO
+  val monadCancelIO: MonadCancel[IO, Throwable] = MonadCancel[IO]
+  val uncancelableIO = monadCancelIO.uncancelable(_ =>
+    IO(println("I'm uncancelable")) *> IO(42)
+  ) // same as IO.uncancelable(...)
+
+  // spawn = ability to create fibers
+  trait MyGenSpawn[F[_], E] extends MonadCancel[F, E] {
+    def start[A](fa: F[A]): F[Fiber[F, E, A]] // creates a fiber
+    // never, cede, racepair
+  }
+
+  trait MySpawn[F[_]] extends GenSpawn[F, Throwable]
+
+  val spawnIO = Spawn[IO]
+  val fiber   = spawnIO.start(delayedPrint) // creates a fiber, same as delayedPrint.start
+
+  // concurrent = concurrency primitives ( atomic references + promises)
+  trait MyConcurrent[F[_]] extends Spawn[F] {
+    def ref[A](a: A): F[Ref[F, A]]
+    def deferred[A]: F[Deferred[F, A]]
+  }
+
+  // Temporal = ability to suspend computations for a given time
+  trait MyTemporal[F[_]] extends Concurrent[F] {
+    def sleep(time: FiniteDuration): F[Unit]
+  }
+
+  // Sync is the ability to suspend synchronous computations arbitrary expressions in an effect
+  trait MySync[F[_]] extends MonadCancel[F, Throwable] with Defer[F] {
+    def delay[A](expression: => A): F[A]
+    def blocking[A](expression: => A): F[A] // runs on a dedicated thread pool
+  }
+
+  // Async = ability to suspend asynchronous computations(i.e. an other thread pools) into an effect managed by the effect system
+  trait MyAsync[F[_]] extends Sync[F] with Temporal[F] {
+    def executionContext: F[ExecutionContext]
+    def async[A](cb: (Either[Throwable, A] => Unit) => Unit): F[A]
   }
 
   // CE apps have a "run" method returnin an IO, which will internally be evaluated in main function
