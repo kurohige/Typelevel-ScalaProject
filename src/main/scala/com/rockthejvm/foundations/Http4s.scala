@@ -87,8 +87,17 @@ object Http4s extends IOApp.Simple {
         }
       // curl "http://localhost:8080/courses/cats-effect/students"
     }
-
   }
+
+  def healthEndPoint[F[_]: Monad]: HttpRoutes[F] = {
+    val dsl = Http4sDsl[F]
+    import dsl.*
+    HttpRoutes.of[F] { case GET -> Root / "health" =>
+      Ok("All going well!")
+    }
+  }
+
+  def allRoutes[F[_]: Monad]: HttpRoutes[F] = courseRoutes[F] <+> healthEndPoint[F]
 
   override def run: cats.effect.IO[Unit] = EmberServerBuilder
     .default[IO]
