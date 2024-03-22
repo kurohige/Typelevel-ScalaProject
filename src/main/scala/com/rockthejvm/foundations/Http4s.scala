@@ -1,5 +1,10 @@
 package com.rockthejvm.foundations
 
+import cats._
+import cats.implicits.*
+import io.circe.generic.auto.*
+import io.circe.syntax.*
+import org.http4s.circe.*
 import cats.Monad
 import cats.effect.{IO, IOApp}
 import org.http4s.HttpRoutes
@@ -15,7 +20,7 @@ object Http4s extends IOApp.Simple {
       id: String,
       title: String,
       year: Int,
-      instructor: Instructor,
+      instructorName: String,
       students: List[Student]
   )
 
@@ -25,7 +30,7 @@ object Http4s extends IOApp.Simple {
       "cats-effect",
       "Rock the JVM Cats Effect",
       2024,
-      Instructor("Daniel", "Daniel"),
+      "Daniel Daniel",
       List("Alice", "Bob", "Charlie")
     )
 
@@ -36,8 +41,8 @@ object Http4s extends IOApp.Simple {
     // API
     def findCoursesById(courseID: String): Option[Course] = courses.get(courseID)
 
-    def findCoursesByInstructor(instructor: Instructor): List[Course] =
-      courses.values.filter(_.instructor == instructor).toList
+    def findCoursesByInstructor(instructor: String): List[Course] =
+      courses.values.filter(_.instructorName == instructor).toList
   }
 
   // essential REST endpoints
@@ -59,10 +64,21 @@ object Http4s extends IOApp.Simple {
           ) +& YearQueryParamMatcher(maybeYear) =>
         val courses = CourseRepository.findCoursesByInstructor(instructor)
         maybeYear match {
-          case Some(year) => Ok(courses.filter(_.year == year))
-          case None       => Ok(courses)
+          case Some(year) =>
+            year.fold(
+              _ => BadRequest("Parameter 'year' is invalid"),
+              year => Ok(courses.filter(_.year == year).asJson)
+            )
+          case None => Ok(courses.asJson)
+        }
+
+      case GET -> Root / "courses" / courseID / "students" =>
+        CourseRepository.findCoursesById(courseID).map(_.students) match {
+          case Some(students) => Ok(students.asJson)
+          case None           => NotFound(s"Course with ID $courseID not found")
         }
     }
+
   }
 
   override def run: cats.effect.IO[Unit] = EmberServerBuilder
