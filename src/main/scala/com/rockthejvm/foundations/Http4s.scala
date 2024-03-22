@@ -7,10 +7,16 @@ import io.circe.syntax.*
 import org.http4s.circe.*
 import cats.Monad
 import cats.effect.{IO, IOApp}
+
+import org.http4s.*
+import org.http4s.dsl.*
+import org.http4s.headers.*
 import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
-import org.http4s.dsl.impl.{OptionalValidatingQueryParamDecoderMatcher, QueryParamDecoderMatcher}
+import org.http4s.dsl.impl.*
 import org.http4s.ember.server.EmberServerBuilder
+import org.typelevel.ci.CIString
+
 object Http4s extends IOApp.Simple {
 
   // simulate an HTTP server with "students" and "courses"
@@ -71,12 +77,15 @@ object Http4s extends IOApp.Simple {
             )
           case None => Ok(courses.asJson)
         }
+      // curl "http://localhost:8080/courses?instructor=Daniel%200Daniel&year=2024"
 
       case GET -> Root / "courses" / courseID / "students" =>
         CourseRepository.findCoursesById(courseID).map(_.students) match {
-          case Some(students) => Ok(students.asJson)
-          case None           => NotFound(s"Course with ID $courseID not found")
+          case Some(students) =>
+            Ok(students.asJson, Header.Raw(CIString("My-custom-header"), "rockthejvm"))
+          case None => NotFound(s"Course with ID $courseID not found")
         }
+      // curl "http://localhost:8080/courses/cats-effect/students"
     }
 
   }
