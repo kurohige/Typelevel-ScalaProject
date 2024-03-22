@@ -1,13 +1,12 @@
 package com.rockthejvm.foundations
 
-import cats._
+import cats.*
 import cats.implicits.*
 import io.circe.generic.auto.*
 import io.circe.syntax.*
 import org.http4s.circe.*
 import cats.Monad
 import cats.effect.{IO, IOApp}
-
 import org.http4s.*
 import org.http4s.dsl.*
 import org.http4s.headers.*
@@ -15,6 +14,7 @@ import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
 import org.http4s.dsl.impl.*
 import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.server.Router
 import org.typelevel.ci.CIString
 
 object Http4s extends IOApp.Simple {
@@ -98,6 +98,11 @@ object Http4s extends IOApp.Simple {
   }
 
   def allRoutes[F[_]: Monad]: HttpRoutes[F] = courseRoutes[F] <+> healthEndPoint[F]
+
+  def routerWithPathPrefixes = Router(
+    "/api"     -> courseRoutes[IO],
+    "/private" -> healthEndPoint[IO]
+  ).orNotFound
 
   override def run: cats.effect.IO[Unit] = EmberServerBuilder
     .default[IO]
