@@ -2,3 +2,9 @@
 /shelf/
 /.idea/workspace.xml
 /docker-compose.yml
+/.bloop
+/.metals
+/.vscode
+/.idea
+/target
+/project
