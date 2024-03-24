@@ -17,8 +17,13 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
 import org.http4s.circe.*
 import org.typelevel.ci.CIString
-import com.rockthejvm.jobsboard.http.routes.HealthRoutes
 
+import com.rockthejvm.jobsboard.http.routes.HealthRoutes
+import pureconfig.ConfigSource
+import com.rockthejvm.jobsboard.config.*
+import com.rockthejvm.jobsboard.config.syntax.*
+
+import pureconfig.error.ConfigReaderException
 /*
     1 - add a plain health endpoint to our app
     2 - add minimal configuration
@@ -28,9 +33,16 @@ import com.rockthejvm.jobsboard.http.routes.HealthRoutes
 
 object Application extends IOApp.Simple {
 
-  override def run: cats.effect.IO[Unit] = EmberServerBuilder
-    .default[IO]
-    .withHttpApp(HealthRoutes[IO].routes.orNotFound)
-    .build
-    .use(_ => IO.println("Rock the JVM!") *> IO.never)
+  val configSource = ConfigSource.default.load[EmberConfig]
+
+  override def run: cats.effect.IO[Unit] =
+    ConfigSource.default.loadF[IO, EmberConfig].flatMap { config =>
+      EmberServerBuilder
+        .default[IO]
+        .withHost(config.host)
+        .withPort(config.port)
+        .withHttpApp(HealthRoutes[IO].routes.orNotFound)
+        .build
+        .use(_ => IO.println("Rock the JVM!") *> IO.never)
+    }
 }
