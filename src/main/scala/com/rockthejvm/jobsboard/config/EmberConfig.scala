@@ -8,6 +8,8 @@ import pureconfig.error.CannotConvert
 import com.comcast.ip4s.Literals.host
 
 // Implement given configReader: ConfigReader[EmberConfig]
+// pureconfig will use this to read an EmberConfig from a configuration file
+// it knows where to look based on resources directory convention
 final case class EmberConfig(host: Host, port: Port) derives ConfigReader
 
 object EmberConfig {
