@@ -14,6 +14,8 @@ class HttpApi[F[_]: Monad] private {
   private val healthRoutes = HealthRoutes[F]
   private val jobRoutes    = JobRoutes[F]
 
+  // when updating the routes on application ember server, we will list the endpoints and routes as:
+  // .withHttpApp(HttpApi[IO].endpoints.orNotFound)
   val endpoints = Router(
     "/api" -> (healthRoutes.routes <+> jobRoutes.routes)
   )

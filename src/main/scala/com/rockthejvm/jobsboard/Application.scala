@@ -18,12 +18,12 @@ import org.http4s.server.Router
 import org.http4s.circe.*
 import org.typelevel.ci.CIString
 
-import com.rockthejvm.jobsboard.http.routes.HealthRoutes
 import pureconfig.ConfigSource
 import com.rockthejvm.jobsboard.config.*
 import com.rockthejvm.jobsboard.config.syntax.*
 
 import pureconfig.error.ConfigReaderException
+import com.rockthejvm.jobsboard.http.HttpApi
 /*
     1 - add a plain health endpoint to our app
     2 - add minimal configuration
@@ -41,7 +41,7 @@ object Application extends IOApp.Simple {
         .default[IO]
         .withHost(config.host)
         .withPort(config.port)
-        .withHttpApp(HealthRoutes[IO].routes.orNotFound)
+        .withHttpApp(HttpApi[IO].endpoints.orNotFound)
         .build
         .use(_ => IO.println("Rock the JVM!") *> IO.never)
     }
