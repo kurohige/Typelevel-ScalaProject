@@ -7,10 +7,12 @@ import org.http4s.server.*
 import cats.effect.*
 import com.comcast.ip4s.Literals.idn
 import cats.implicits.*
+import org.typelevel.log4cats.Logger
 
+import com.rockthejvm.jobsboard.logging.syntax.*
 import com.rockthejvm.jobsboard.http.routes.*
 
-class HttpApi[F[_]: Concurrent] private {
+class HttpApi[F[_]: Concurrent: Logger] private {
   private val healthRoutes = HealthRoutes[F]
   private val jobRoutes    = JobRoutes[F]
 
@@ -22,5 +24,5 @@ class HttpApi[F[_]: Concurrent] private {
 }
 
 object HttpApi {
-  def apply[F[_]: Concurrent]: HttpApi[F] = new HttpApi[F]
+  def apply[F[_]: Concurrent: Logger]: HttpApi[F] = new HttpApi[F]
 }
