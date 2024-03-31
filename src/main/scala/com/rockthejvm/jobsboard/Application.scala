@@ -26,19 +26,27 @@ import com.rockthejvm.jobsboard.config.syntax.*
 import com.rockthejvm.jobsboard.logging.syntax.*
 
 import pureconfig.error.ConfigReaderException
-import com.rockthejvm.jobsboard.http.HttpApi
+import com.rockthejvm.jobsboard.modules.*
+import com.rockthejvm.foundations.Doobie.xa
 
 object Application extends IOApp.Simple {
 
   given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
-  override def run: cats.effect.IO[Unit] =
-    ConfigSource.default.loadF[IO, EmberConfig].flatMap { config =>
-      EmberServerBuilder
-        .default[IO]
-        .withHost(config.host)
-        .withPort(config.port)
-        .withHttpApp(HttpApi[IO].endpoints.orNotFound)
-        .build
-        .use(_ => IO.println("Rock the JVM!") *> IO.never)
-    }
+
+  override def run = ConfigSource.default.loadF[IO, AppConfig].flatMap {
+    case AppConfig(postgressConfig, emberConfig) =>
+      val appResource = for {
+        xa      <- Database.makePostgresResource[IO](postgressConfig)
+        core    <- Core[IO](xa)
+        httpApi <- HttpApi[IO](core)
+        server <- EmberServerBuilder
+          .default[IO]
+          .withHost(emberConfig.host)
+          .withPort(emberConfig.port)
+          .withHttpApp(httpApi.endpoints.orNotFound)
+          .build
+      } yield server
+
+      appResource.use(_ => IO.println("Rock the JVM!") *> IO.never)
+  }
 }
