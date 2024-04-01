@@ -16,7 +16,7 @@ object Database {
       "org.postgresql.Driver",
       config.url,
       config.user,
-      config.password,
+      config.pass,
       ec
     )
   } yield xa
