@@ -14,6 +14,7 @@ import scala.collection.mutable
 import java.util.UUID
 import com.rockthejvm.jobsboard.domain.job.*
 import com.rockthejvm.jobsboard.http.responses.*
+import com.rockthejvm.jobsboard.http.validation.syntax.*
 import com.rockthejvm.jobsboard.core.*
 
 import com.rockthejvm.jobsboard.logging.syntax.*
@@ -56,13 +57,15 @@ class JobRoutes[F[_]: Concurrent: Logger] private (jobs: Jobs[F]) extends Http4s
   import com.rockthejvm.jobsboard.logging.syntax.*
   private val createJobRoute: HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / "create" =>
-      for {
-        jobInfo <- req.as[JobInfo].logError(e => s"Parsing payload failed: $e")
-        jobId <- jobs
-          .create("TODO@rockthejvm.com", jobInfo)
-          .logError(e => s"Creating job failed: $e")
-        resp <- Created(jobId)
-      } yield resp
+      req.validate[JobInfo] { jobInfo =>
+        for {
+          jobInfo <- req.as[JobInfo].logError(e => s"Parsing payload failed: $e")
+          jobId <- jobs
+            .create("TODO@rockthejvm.com", jobInfo)
+            .logError(e => s"Creating job failed: $e")
+          resp <- Created(jobId)
+        } yield resp
+      }
   }
 
   // PUT /jobs/{uuid} { jobInfo }

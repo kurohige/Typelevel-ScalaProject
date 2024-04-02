@@ -19,7 +19,7 @@ import com.rockthejvm.jobsboard.fixtures.*
 import java.util.UUID
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import fixtures.{JobFixture, SecuredRouteFixture}
+import com.rockthejvm.jobsboard.fixtures.{JobFixture, SecuredRouteFixture}
 
 class JobRoutesSpec
     extends AsyncFreeSpec
