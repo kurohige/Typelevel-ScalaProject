@@ -20,7 +20,7 @@ import com.rockthejvm.jobsboard.core.*
 import com.rockthejvm.jobsboard.logging.syntax.*
 import org.typelevel.log4cats.Logger
 
-class JobRoutes[F[_]: Concurrent: Logger] private (jobs: Jobs[F]) extends Http4sDsl[F] {
+class JobRoutes[F[_]: Concurrent: Logger] private (jobs: Jobs[F]) extends HttpValidationDsl[F] {
   /*
     in the following endpoints we use "case req @" to match the request and then use the for comprehension to extract
     the body of the request.
