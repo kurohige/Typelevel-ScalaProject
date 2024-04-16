@@ -19,6 +19,7 @@ import com.rockthejvm.jobsboard.core.*
 
 import com.rockthejvm.jobsboard.logging.syntax.*
 import org.typelevel.log4cats.Logger
+import com.rockthejvm.jobsboard.domain.pagination.*
 
 class JobRoutes[F[_]: Concurrent: Logger] private (jobs: Jobs[F]) extends HttpValidationDsl[F] {
   /*
@@ -28,12 +29,19 @@ class JobRoutes[F[_]: Concurrent: Logger] private (jobs: Jobs[F]) extends HttpVa
 
   // "database"
 
+  object OffsetQueryParams   extends OptionalQueryParamDecoderMatcher[Int]("offset")
+  object LimitsetQueryParams extends OptionalQueryParamDecoderMatcher[Int]("limit")
+
   // POST /jobs?offset=x&limit=y { filters }  // TODO: add query params and filtesr
-  private val allJobsRoute: HttpRoutes[F] = HttpRoutes.of[F] { case POST -> Root =>
-    for {
-      jobsList <- jobs.all().logError(e => s"Fetching all jobs failed: $e")
-      resp     <- Ok(jobsList)
-    } yield resp
+  private val allJobsRoute: HttpRoutes[F] = HttpRoutes.of[F] {
+    case req @ POST -> Root :? OffsetQueryParams(offset) +& LimitsetQueryParams(limit) =>
+      for {
+        filter <- req.as[JobFilter].logError(e => s"Failed to parse filters: $e")
+        jobsList <- jobs
+          .all(filter, Pagination(limit, offset))
+          .logError(e => s"Fetching all jobs failed: $e")
+        resp <- Ok(jobsList)
+      } yield resp
   }
 
   // GET /jobs/{uuid}

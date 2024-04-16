@@ -24,6 +24,7 @@ trait Jobs[F[_]] {
   // Read
   def all(): F[List[Job]]
   def all(filter: JobFilter, pagination: Pagination): F[List[Job]]
+
   def find(id: UUID): F[Option[Job]]
 
   // Update
@@ -108,6 +109,7 @@ class LiveJobs[F[_]: MonadCancelThrow: Logger] private (xa: Transactor[F]) exten
       .transact(xa)
 
   override def all(filter: JobFilter, pagination: Pagination): F[List[Job]] = {
+    // Fragment from doobie to build SQL queries
     val selectFragment: Fragment =
       fr"""
       SELECT
@@ -130,14 +132,16 @@ class LiveJobs[F[_]: MonadCancelThrow: Logger] private (xa: Transactor[F]) exten
         other,
         active
       """
+    // for better readability we'll use capitalization for SQL keywords
     val fromFragment: Fragment =
       fr"FROM jobs"
     val whereFragment: Fragment = Fragments.whereAndOpt(
       filter.companies.toNel.map(companies => Fragments.in(fr"company", companies)),
+      // toNel converts List to Option[NonEmptyList]
       filter.locations.toNel.map(locations => Fragments.in(fr"location", locations)),
       filter.countries.toNel.map(countries => Fragments.in(fr"country", countries)),
       filter.seniorities.toNel.map(seniorities => Fragments.in(fr"seniority", seniorities)),
-      filter.tags.toNel.map(tags => // intersection between filter.tags and row's tag
+      filter.tags.toNel.map(tags => // intersection(Or) between filter.tags and row's tag
         Fragments.or(tags.toList.map(tag => fr"$tag=any(tags)"): _*)
       ),
       filter.maxSalary.map(salary => fr"salaryHi > $salary"),
@@ -146,6 +150,7 @@ class LiveJobs[F[_]: MonadCancelThrow: Logger] private (xa: Transactor[F]) exten
     val paginationFragment: Fragment =
       fr"ORDER BY id LIMIT ${pagination.limit} OFFSET ${pagination.offset}"
 
+      // combine all fragments
     val statement = selectFragment |+| fromFragment |+| whereFragment |+| paginationFragment
     /*
         WHERE company in [filter.companies]
